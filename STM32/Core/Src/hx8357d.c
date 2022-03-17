@@ -22,7 +22,7 @@ void LCD_sendCommand(uint8_t com){
     uint8_t tmpCmd = com;
     HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0);
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
-	HAL_SPI_Transmit(&lcdSPIhandle, &tmpCmd, 1, 5);
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpCmd, 1, 1);
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
 }
 
@@ -30,18 +30,30 @@ void LCD_sendData(uint8_t data){
 	uint8_t tmpDat = data;
 	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1);
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
-	HAL_SPI_Transmit(&lcdSPIhandle, &tmpDat, 1, 5);
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpDat, 1, 1);
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+
+void LCD_sendCommand_NoCS(uint8_t com){
+    uint8_t tmpCmd = com;
+    HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0);
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpCmd, 1, 1);
+}
+
+void LCD_sendData_NoCS(uint8_t data){
+	uint8_t tmpDat = data;
+	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1);
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpDat, 1, 1);
 }
 
 void LCD_sendCommandArg(uint8_t command, uint8_t *dataBytes, uint8_t dataLen){
     HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
 	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0); //0 for command
     uint8_t buf = command;
-    HAL_SPI_Transmit(&lcdSPIhandle, &buf, 1, 5);
+    HAL_SPI_Transmit(&lcdSPIhandle, &buf, 1, 1);
     HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1); //start writing args
     for(int i = 0; i < dataLen; ++i){
-        HAL_SPI_Transmit(&lcdSPIhandle, dataBytes, 1, 5);
+        HAL_SPI_Transmit(&lcdSPIhandle, dataBytes, 1, 1);
         dataBytes++;
     }  
     HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
@@ -62,13 +74,13 @@ void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t cs
     //RESET pin
     tftRESET_GPIO = resetPORT;
     tftRESET_PIN = resetPIN;
-    HAL_GPIO_WritePin(tftRESET_GPIO, tftRESET_PIN, 1);  //Turn LCD ON //low
-
-
+    HAL_GPIO_WritePin(tftRESET_GPIO, tftRESET_PIN, 1);
+    HAL_Delay(10);
     //init commands
 
     LCD_sendCommand(HX8357_SWRESET);
     HAL_Delay(10);
+
     uint8_t setC[] = {0xFF, 0x83, 0x57};
     LCD_sendCommandArg(HX8357D_SETC, setC, 3);
     HAL_Delay(500);
@@ -100,13 +112,13 @@ void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t cs
     LCD_sendCommandArg(HX8357_TEON, &setTEON, 1);
     uint8_t setTEARLINE[] = {0x00, 0x02};
     LCD_sendCommandArg(HX8357_TEARLINE, setTEARLINE, 2);
+
     LCD_sendCommand(HX8357_SLPOUT);
     HAL_Delay(150);
     LCD_sendCommand(HX8357_DISPON);
     HAL_Delay(50);
 }
 
-//? below
 //Graphics function prototypes
 void LCD_setCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
   uint8_t setCASET[] = {x1 >> 8, x1 & 0xFF, x2 >> 8, x2 & 0xFF};
@@ -114,10 +126,36 @@ void LCD_setCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
   uint8_t setPASET[] = {y1 >> 8, y1 & 0xFF, y2 >> 8, y2 & 0xFF};
   LCD_sendCommandArg(HX8357_PASET, setPASET, 4);
   LCD_sendCommand(HX8357_RAMWR);
+  //TODO needs write immediately after (RAMWR)
 }
 //5. Write data to a single pixel
 void LCD_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
   LCD_setCursorPosition(x, y, x, y);
-  LCD_sendData(color>>8);
-  LCD_sendData(color&0xFF);
+  uint8_t setRAMWR[] = {color >> 8, color & 0xFF};
+  LCD_sendCommandArg(HX8357_RAMWR, setRAMWR, 2);
+}
+
+void LCD_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color){
+	uint32_t n = (x2 - x1) * (y2 - y1);
+	LCD_setCursorPosition(x1, y1, x2, y2);
+
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	while (n) {
+		n--;
+		LCD_sendData_NoCS(color>>8);
+		LCD_sendData_NoCS(color&0xff);
+	}
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+void LCD_fill(uint16_t color){
+	uint32_t n = LCD_PIXEL_COUNT;
+	LCD_setCursorPosition(0, 0, HX8357_TFTWIDTH-1, HX8357_TFTHEIGHT-1);
+
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	while (n) {
+		n--;
+		LCD_sendData_NoCS(color>>8);
+		LCD_sendData_NoCS(color&0xff);
+	}
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
 }

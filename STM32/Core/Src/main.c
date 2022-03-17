@@ -43,11 +43,11 @@ SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
 //Chip Select pin
-GPIO_TypeDef  *tftCS_GPIO = GPIOF;
-uint16_t tftCS_PIN = GPIO_PIN_12;
+GPIO_TypeDef  *tftCS_GPIO = GPIOE;
+uint16_t tftCS_PIN = GPIO_PIN_11;
 //Data Command pin
-GPIO_TypeDef  *tftDC_GPIO = GPIOE;
-uint16_t tftDC_PIN = GPIO_PIN_11;
+GPIO_TypeDef  *tftDC_GPIO = GPIOF;
+uint16_t tftDC_PIN = GPIO_PIN_12;
 //Reset pin
 GPIO_TypeDef  *tftRESET_GPIO = GPIOF;
 uint16_t tftRESET_PIN = GPIO_PIN_13;
@@ -95,13 +95,10 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
 
-  HAL_Delay(1000);
-  //LCD_drawPixel(100, 100, HX8357_BLACK);
-  LCD_setCursorPosition(0, 0, 100, 100);
-  LCD_sendData(0);
-  LCD_sendData(0);
+  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  //LCD_fill(HX8357_GREEN);
+  LCD_rect(50, 250, 190, 300, HX8357_BLACK); //TODO bug! trailing pixels missing by amount of dy
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -180,7 +177,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
