@@ -18,6 +18,10 @@ static uint16_t tftDC_PIN;
 static GPIO_TypeDef  *tftRESET_GPIO;
 static uint16_t tftRESET_PIN;
 
+
+
+
+
 void LCD_sendCommand(uint8_t com){
     uint8_t tmpCmd = com;
     HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0);
@@ -59,10 +63,13 @@ void LCD_sendCommandArg(uint8_t command, uint8_t *dataBytes, uint8_t dataLen){
     HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
 }
 
-void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t csPIN, GPIO_TypeDef *dcPORT, uint16_t dcPIN, GPIO_TypeDef *resetPORT, uint16_t resetPIN){
-    //Copy SPI settings (...?)
+void LCD_init(SPI_HandleTypeDef *spiLcdHandle,
+                    GPIO_TypeDef *csPORT, uint16_t csPIN, 
+                    GPIO_TypeDef *dcPORT, uint16_t dcPIN, 
+                    GPIO_TypeDef *resetPORT, uint16_t resetPIN){
+    //Set pins and ports---------------------------------------------
+    //Copy SPI settings
     memcpy(&lcdSPIhandle, spiLcdHandle, sizeof(*spiLcdHandle));
-    //set pins and ports
     //CS pin
     tftCS_GPIO = csPORT;
     tftCS_PIN = csPIN;
@@ -75,12 +82,17 @@ void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t cs
     tftRESET_GPIO = resetPORT;
     tftRESET_PIN = resetPIN;
     HAL_GPIO_WritePin(tftRESET_GPIO, tftRESET_PIN, 1);
-    HAL_Delay(10);
-    //init commands
 
+   
+
+
+    //init commands---------------------------------------------------
+    //Soft Reset
+    HAL_Delay(10);
     LCD_sendCommand(HX8357_SWRESET);
     HAL_Delay(10);
 
+    //Misc display values
     uint8_t setC[] = {0xFF, 0x83, 0x57};
     LCD_sendCommandArg(HX8357D_SETC, setC, 3);
     HAL_Delay(500);
@@ -113,6 +125,7 @@ void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t cs
     uint8_t setTEARLINE[] = {0x00, 0x02};
     LCD_sendCommandArg(HX8357_TEARLINE, setTEARLINE, 2);
 
+    //Display on
     LCD_sendCommand(HX8357_SLPOUT);
     HAL_Delay(150);
     LCD_sendCommand(HX8357_DISPON);
@@ -159,3 +172,10 @@ void LCD_fill(uint16_t color){
 	}
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
 }
+
+/*
+ *
+ * void LCD_sendData_NoCS(uint8_t data){
+	uint8_t tmpDat = data;
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpDat, 1, 1);
+}*/

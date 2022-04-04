@@ -1,0 +1,54 @@
+//main.c:
+
+//CLK
+static GPIO_TypeDef  *tftCLK_GPIO = GPIOA;
+static uint16_t tftCLK_PIN = GPIO_PIN_5;
+//MOSI
+static GPIO_TypeDef  *tftMOSI_GPIO = GPIOA;
+static uint16_t tftMOSI_PIN = GPIO_PIN_7;
+
+//hx8357d.c:
+
+//bit-banging
+//CLK
+static GPIO_TypeDef  *tftCLK_GPIO;
+static uint16_t tftCLK_PIN;
+//MOSI
+static GPIO_TypeDef  *tftMOSI_GPIO;
+static uint16_t tftMOSI_PIN;
+
+//LCD_init:
+//header+
+    GPIO_TypeDef *clkPORT, uint16_t clkPIN,
+    GPIO_TypeDef *MOSIPORT, uint16_t MOSIPIN
+
+//fastfill func
+void LCD_fastfill(uint16_t color){
+    int delayCycle = 50;
+	uint32_t n = LCD_PIXEL_COUNT;
+	LCD_setCursorPosition(0, 0, HX8357_TFTWIDTH-1, HX8357_TFTHEIGHT-1);
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1);
+	HAL_GPIO_WritePin(tftMOSI_GPIO, tftMOSI_PIN, 0); //MOSI
+	uint8_t curr_MOSI_val = 0;
+	while (n) {
+		n--;
+		for(int b = 15; b >= 0; b--){
+			uint8_t val = color>>b & 1;
+			if(val ^ curr_MOSI_val){//Only write to MOSI when we have to
+				HAL_GPIO_WritePin(tftMOSI_GPIO, tftMOSI_PIN, val);
+				curr_MOSI_val = val;
+			}
+            for(volatile int i = 0; i < delayCycle; ++i)
+				asm(""); //1ms = 380 i's
+			HAL_GPIO_WritePin(tftCLK_GPIO, tftCLK_PIN, 1);//CLK high
+			for(volatile int i = 0; i < delayCycle; ++i)
+				asm(""); //1ms = 380 i's
+			HAL_GPIO_WritePin(tftCLK_GPIO, tftCLK_PIN, 0);//CLK low
+		}
+	}
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+
+//hx8357d.h:
+void LCD_fastfill(uint16_t color);
