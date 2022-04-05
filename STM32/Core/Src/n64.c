@@ -24,10 +24,10 @@ void writeZero() {
 	uint32_t* writeAdd = (uint32_t*)(GPIOC_ADDR + ODR_OFFSET);
 	*writeAdd &= ~(1 << 6);
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-	delay_us(15);
+	delay_us(15); //3.125
 	*writeAdd |= (1 << 6);
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-	delay_us(5);
+	delay_us(5); //1.375
 }
 
 //ret >> 31:            buttonval (?)
@@ -53,20 +53,18 @@ uint32_t pollRead() {
 
 	//read
 	for(int i = 0; i < 31; ++i) {
-	delay_us(5);
+	delay_us(5);//5
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-	buttonVals |= (*readAdd >> 6) & 1;
+	buttonVals |= (*readAdd >> 6) & 1; //0.5u
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
 	buttonVals = buttonVals << 1;
-	delay_us(6);
-	 if(i % 2 == 0) {
-		delay_us(2);
-	}
-	 if (i==15) {
-		 delay_us(4);
-	 }
+	delay_us(8);
+//	 if(i % 2 == 0) {
+//		delay_us(2);
+//	}
+//	 if (i==15) {
+//		 delay_us(4);
+//	 }
 	}
 	delay_us(5);
 	buttonVals |= (*readAdd >> 6) & 1;

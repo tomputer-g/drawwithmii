@@ -149,7 +149,7 @@ void LCD_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
 }
 
 void LCD_rect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color){
-	uint32_t n = (x2 - x1) * (y2 - y1);
+	uint32_t n = (x2 - x1 + 1) * (y2 - y1 + 1);
 	LCD_setCursorPosition(x1, y1, x2, y2);
 
 	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);

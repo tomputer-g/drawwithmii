@@ -18,12 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stdio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hx8357d.h"
 #include "n64.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -108,9 +108,9 @@ int main(void)
 
   LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
   N64_init(&htim4);
-  printf("Initing...\n\r");
-  HAL_Delay(200);
-  //LCD_fill(HX8357_WHITE);
+  //printf("Initing...\n\r"); //printf this gives error
+  //HAL_Delay(200);
+  LCD_fill(HX8357_WHITE);
   //LCD_rect(50, 250, 190, 300, HX8357_BLACK); //TODO bug! trailing pixels missing by amount of dy
   /* USER CODE END 2 */
 
@@ -123,9 +123,14 @@ int main(void)
 
 	  vals = pollRead();
 	  //int buttonval = vals >> 31;
-	  char xval = (vals >> 8) & 0xff; //both were signed
-	  char yval = vals & 0xff;
-	  printf("X: %d,Y: %d\n\r", (int)xval, (int)yval);
+	  signed char xval = (vals >> 8) & 0xff; //both were signed
+	  signed char yval = vals & 0xff;
+	  printf("X: %d,Y: %d\n\r", xval, yval);
+
+	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
+	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
+	  uint16_t rectRadius = 2;
+	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
 	  /*if(yval >50 && xval > 50) {
 		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
 	  }
@@ -372,10 +377,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PE2 PE3 */
   GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
@@ -498,13 +500,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF13_SAI2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB14 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PD8 PD9 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -518,13 +513,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC8 PC9 PC10 PC11
