@@ -1,0 +1,201 @@
+/*
+ * hx8357d.c
+ *
+ *  Created on: Mar 15, 2022
+ *      Author: gzm20
+ */
+
+#include "hx8357d.h"
+//---------GPIO definitions
+static SPI_HandleTypeDef lcdSPIhandle;
+//Chip Select pin
+static GPIO_TypeDef  *tftCS_GPIO;
+static uint16_t tftCS_PIN;
+//Data Command pin
+static GPIO_TypeDef  *tftDC_GPIO;
+static uint16_t tftDC_PIN;
+//Reset pin
+static GPIO_TypeDef  *tftRESET_GPIO;
+static uint16_t tftRESET_PIN;
+
+
+//***** Functions prototypes *****//
+//1. Write Command to LCD
+void LCD_sendCommand(uint8_t com)
+{
+	//*(__IO uint8_t *)(0x60000000) = com;
+	uint8_t tmpCmd = com;
+	//Set DC HIGH for COMMAND mode
+	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1);
+	//Put CS LOW
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	//Write byte using SPI
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpCmd, 1, 5);
+	//Bring CS HIGH
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+
+//2. Write data to LCD
+void LCD_sendData(uint8_t data)
+{
+	//*(__IO uint8_t *)(0x60040000) = data;
+	uint8_t tmpCmd = data;
+	//Set DC LOW for DATA mode
+	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0);
+	//Put CS LOW
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	//Write byte using SPI
+	HAL_SPI_Transmit(&lcdSPIhandle, &tmpCmd, 1, 5);
+	//Bring CS HIGH
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+//2.2 Write multiple/DMA
+void LCD_sendDataMulti(uint16_t Colordata, uint32_t size)
+{
+	//Set DC LOW for DATA mode
+	HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 0);
+	//Put CS LOW
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 0);
+	//Write byte using SPI
+	HAL_SPI_Transmit(&lcdSPIhandle, (uint8_t *)&Colordata, size, 1000);
+	//Wait for end of DMA transfer
+	//Bring CS HIGH
+	HAL_GPIO_WritePin(tftCS_GPIO, tftCS_PIN, 1);
+}
+
+//4. Initialise function
+void LCD_init(SPI_HandleTypeDef *spiLcdHandle, GPIO_TypeDef *csPORT, uint16_t csPIN, GPIO_TypeDef *dcPORT, uint16_t dcPIN, GPIO_TypeDef *resetPORT, uint16_t resetPIN)
+ {
+	 //Copy SPI settings
+	 memcpy(&lcdSPIhandle, spiLcdHandle, sizeof(*spiLcdHandle));
+	 //CS pin
+	 tftCS_GPIO = csPORT;
+	 tftCS_PIN = csPIN;
+	 HAL_GPIO_WritePin(tftCS_PIN, tftCS_PIN, 1);
+
+	 //DC pin
+	 tftDC_GPIO = dcPORT;
+	 tftDC_PIN = dcPIN;
+	 HAL_GPIO_WritePin(tftDC_GPIO, tftDC_PIN, 1);
+	 //RESET pin
+	 tftRESET_GPIO = resetPORT;
+	 tftRESET_PIN = resetPIN;
+	 HAL_GPIO_WritePin(tftRESET_GPIO, tftRESET_PIN, 1);  //Turn LCD ON //low
+
+   LCD_sendCommand(HX8357_SWRESET);
+   LCD_sendCommand(0x80);
+   HAL_Delay(10);
+   LCD_sendCommand(HX8357D_SETC);
+   LCD_sendData(0xFF);
+   LCD_sendData(0x83);
+   LCD_sendData(0x57);
+   LCD_sendCommand(0xFF);
+   LCD_sendCommand (0x80);
+   HAL_Delay(300);
+   LCD_sendCommand(HX8357_SETRGB);
+   LCD_sendData(0x80);
+   LCD_sendData(0x00);
+   LCD_sendData(0x06);
+   LCD_sendData(0x06);
+   LCD_sendCommand(HX8357D_SETCOM);
+   LCD_sendData(0x25);
+   LCD_sendCommand(HX8357_SETOSC);
+   LCD_sendData(0x68);
+   LCD_sendCommand(HX8357_SETPANEL);
+   LCD_sendData(0x05);
+   LCD_sendCommand(HX8357_SETPWR1);
+   LCD_sendData(0x00);
+   LCD_sendData(0x15);
+   LCD_sendData(0x1C);
+   LCD_sendData(0x1C);
+   LCD_sendData(0x83);
+   LCD_sendData(0xAA);
+   LCD_sendCommand(HX8357D_SETSTBA);
+   LCD_sendData(0x50);
+   LCD_sendData(0x50);
+   LCD_sendData(0x01);
+   LCD_sendData(0x3C);
+   LCD_sendData(0x1E);
+   LCD_sendData(0x08);
+   LCD_sendCommand(HX8357D_SETCYC);
+   LCD_sendData(0x02);
+   LCD_sendData(0x40);
+   LCD_sendData(0x00);
+   LCD_sendData(0x2A);
+   LCD_sendData(0x2A);
+   LCD_sendData(0x0D);
+   LCD_sendData(0x78);
+   LCD_sendCommand(HX8357D_SETGAMMA);
+
+   LCD_sendData(0x02);
+   LCD_sendData(0x0A);
+   LCD_sendData(0x11);
+   LCD_sendData(0x1D);
+   LCD_sendData(0x23);
+   LCD_sendData(0x35);
+   LCD_sendData(0x41);
+   LCD_sendData(0x4b);
+   LCD_sendData(0x4b);
+   LCD_sendData(0x42);
+   LCD_sendData(0x3A);
+   LCD_sendData(0x27);
+   LCD_sendData(0x1B);
+   LCD_sendData(0x08);
+   LCD_sendData(0x09);
+   LCD_sendData(0x03);
+   LCD_sendData(0x02);
+   LCD_sendData(0x0A);
+   LCD_sendData(0x11);
+   LCD_sendData(0x1d);
+   LCD_sendData(0x23);
+   LCD_sendData(0x35);
+   LCD_sendData(0x41);
+   LCD_sendData(0x4b);
+   LCD_sendData(0x4b);
+   LCD_sendData(0x42);
+   LCD_sendData(0x3A);
+   LCD_sendData(0x27);
+   LCD_sendData(0x1B);
+   LCD_sendData(0x08);
+   LCD_sendData(0x09);
+   LCD_sendData(0x03);
+   LCD_sendData(0x00);
+   LCD_sendData(0x01);
+
+   LCD_sendCommand(HX8357_COLMOD);
+   LCD_sendData(0x55);
+   LCD_sendCommand(HX8357_MADCTL);
+   LCD_sendData(0xC0);
+   LCD_sendCommand(HX8357_TEON);
+   LCD_sendData(0x00);
+   LCD_sendCommand(HX8357_TEARLINE);
+   LCD_sendDataMulti(0x00, 0x02);
+   LCD_sendCommand(HX8357_SLPOUT);
+   LCD_sendCommand(0x80);
+   HAL_Delay(150);
+   LCD_sendCommand(HX8357_DISPON);
+   LCD_sendCommand(0x80);
+   HAL_Delay(50);
+ }
+//Graphics function prototypes
+void LCD_setCursorPosition(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+
+  LCD_sendCommand (HX8357_CASET);
+  LCD_sendData(x1>>8);
+  LCD_sendData(x1 & 0xFF);
+  LCD_sendData(x2>>8);
+  LCD_sendData(x2 & 0xFF);
+
+  LCD_sendCommand (HX8357_PASET);
+  LCD_sendData(y1>>8);
+  LCD_sendData(y1 & 0xFF);
+  LCD_sendData(y2>>8);
+  LCD_sendData(y2 & 0xFF);
+  LCD_sendCommand (HX8357_RAMWR);
+}
+//5. Write data to a single pixel
+void LCD_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
+  LCD_setCursorPosition(x, y, x, y);
+	LCD_sendData(color>>8);
+	LCD_sendData(color&0xFF);
+}

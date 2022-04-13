@@ -1,0 +1,6 @@
+hx8357d_old.c:24:6:LCD_sendCommand	24	static
+hx8357d_old.c:39:6:LCD_sendData	24	static
+hx8357d_old.c:53:6:LCD_sendDataMulti	16	static
+hx8357d_old.c:67:6:LCD_init	24	static
+hx8357d_old.c:181:6:LCD_setCursorPosition	24	static
+hx8357d_old.c:197:6:LCD_drawPixel	16	static
