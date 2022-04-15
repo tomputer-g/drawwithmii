@@ -1,0 +1,5 @@
+../Core/Src/PixyI2C.c:23:9:send	40	static
+../Core/Src/PixyI2C.c:28:9:recv	40	static
+../Core/Src/PixyI2C.c:34:10:getWord	24	static
+../Core/Src/PixyI2C.c:44:16:getStart	24	static
+../Core/Src/PixyI2C.c:73:6:getBlocks	24	static

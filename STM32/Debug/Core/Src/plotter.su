@@ -1,0 +1,8 @@
+../Core/Src/plotter.c:39:6:step_init	24	static
+../Core/Src/plotter.c:67:6:setSpeed	16	static
+../Core/Src/plotter.c:72:6:switchMode	16	static
+../Core/Src/plotter.c:77:6:stopStep	16	static
+../Core/Src/plotter.c:95:6:stepDiag	32	static
+../Core/Src/plotter.c:193:6:step	24	static
+../Core/Src/plotter.c:241:6:stepStop	16	static
+../Core/Src/plotter.c:247:6:stepMotor	16	static

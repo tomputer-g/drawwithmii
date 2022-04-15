@@ -1,5 +1,5 @@
-../Core/Src/n64.c:9:6:delay_us	16	static
-../Core/Src/n64.c:15:6:writeOne	16	static
-../Core/Src/n64.c:23:6:writeZero	16	static
-../Core/Src/n64.c:36:10:pollRead	24	static
-../Core/Src/n64.c:75:6:N64_init	16	static
+../Core/Src/n64.c:14:6:delay_us	16	static
+../Core/Src/n64.c:20:6:writeOne	16	static
+../Core/Src/n64.c:29:6:writeZero	16	static
+../Core/Src/n64.c:43:10:pollRead	24	static
+../Core/Src/n64.c:85:6:N64_init	24	static

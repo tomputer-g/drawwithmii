@@ -9,11 +9,10 @@
 #define GPIOC_ADDR 0x48000800
 #define IDR_OFFSET 0x10
 #define ODR_OFFSET 0x14
-//#define TIMER TIM4 never used!
 void delay_us (uint16_t us);
 void writeOne();
 void writeZero();
 uint32_t pollRead();
 
-void N64_init(TIM_HandleTypeDef* countTimer);
+void N64_init(TIM_HandleTypeDef* countTimer, GPIO_TypeDef* Data_GPIO, uint16_t Data_PIN, GPIO_TypeDef* Debug_GPIO, uint16_t Debug_PIN);
 #endif
