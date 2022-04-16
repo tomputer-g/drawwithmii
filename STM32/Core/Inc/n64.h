@@ -13,6 +13,7 @@ void delay_us (uint16_t us);
 void writeOne();
 void writeZero();
 uint32_t pollRead();
+uint32_t intRead();
 
-void N64_init(TIM_HandleTypeDef* countTimer, GPIO_TypeDef* Data_GPIO, uint16_t Data_PIN, GPIO_TypeDef* Debug_GPIO, uint16_t Debug_PIN);
+void N64_init(TIM_HandleTypeDef *countTimer, GPIO_TypeDef *Data_GPIO, uint16_t Data_PIN, GPIO_TypeDef *Debug_GPIO, uint16_t Debug_PIN, GPIO_TypeDef *Int_GPIO, uint16_t Int_PIN);
 #endif

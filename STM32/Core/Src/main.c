@@ -69,7 +69,10 @@ GPIO_TypeDef  *n64_GPIO = GPIOC;
 uint16_t n64_PIN = GPIO_PIN_6;
 //Debug pin
 GPIO_TypeDef  *n64_DEBUG_GPIO = GPIOB;
-uint16_t n64_DEBUG_PIN = GPIO_PIN_15;
+uint16_t n64_DEBUG_PIN = GPIO_PIN_13;
+//Interrupt pin (connected to data)
+GPIO_TypeDef  *n64_INT_GPIO = GPIOB;
+uint16_t n64_INT_PIN = GPIO_PIN_15;
 
 //--------------------------XY Plotter--------------------------------
 // Pin definitions
@@ -141,12 +144,12 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
-  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
-  N64_init(&htim4, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN);
+//  step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
+//  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  N64_init(&htim4, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
   printf("Initing...\n\r");
-  HAL_Delay(200);
-  LCD_fill(HX8357_MAGENTA);
+//  HAL_Delay(200);
+//  LCD_fill(HX8357_MAGENTA);
   //LCD_rect(50, 250, 190, 300, HX8357_BLACK); //TODO bug! trailing pixels missing by amount of dy
   /* USER CODE END 2 */
 
@@ -154,22 +157,23 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
-  setSpeed(150);
+//  setSpeed(150);
   uint32_t vals = 0;
   printf("Starting...\n\r");
   while (1)
   {
 
-	  vals = pollRead();
+//	  vals = pollRead();
+	  vals = intRead();
 	  //int buttonval = vals >> 31;
-	  signed char xval = (vals >> 8) & 0xff; //both were signed
-	  signed char yval = vals & 0xff;
-	  printf("X: %d,Y: %d\n\r", xval, yval);
-
-	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
-	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
-	  uint16_t rectRadius = 2;
-	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+//	  signed char xval = (vals >> 8) & 0xff; //both were signed
+//	  signed char yval = vals & 0xff;
+//	  printf("X: %d,Y: %d\n\r", xval, yval);
+//
+//	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
+//	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
+//	  uint16_t rectRadius = 2;
+//	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
 
 	 //HAL_Delay(50);
 //	  stepDiag(200, 200);
@@ -511,7 +515,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_12|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
@@ -574,19 +578,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB10 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_15;
+  /*Configure GPIO pins : PB10 PB13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB12 PB13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13;
+  /*Configure GPIO pin : PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF13_SAI2;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD8 PD9 */
@@ -672,6 +682,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
