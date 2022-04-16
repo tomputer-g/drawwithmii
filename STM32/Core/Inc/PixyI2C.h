@@ -23,7 +23,7 @@ uint8_t recv(I2C_HandleTypeDef *i2c, uint8_t addr, uint8_t *data, uint8_t len);
 uint16_t getWord(I2C_HandleTypeDef *i2c);
 enum BlockType getStart(I2C_HandleTypeDef *i2c);
 
-void getBlocks(I2C_HandleTypeDef *i2c, uint8_t* buf);
+void getBlocks(I2C_HandleTypeDef *i2c, int* buf);
 
 
 #endif /* INC_PIXYI2C_H_ */
