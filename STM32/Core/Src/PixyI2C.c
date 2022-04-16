@@ -70,7 +70,7 @@ enum BlockType getStart(I2C_HandleTypeDef *i2c)
 	}
 }
 
-void getBlocks(I2C_HandleTypeDef *i2c, uint8_t* buf) //X is 0, Y is 2, none others
+void getBlocks(I2C_HandleTypeDef *i2c, int* buf) //X is 0, Y is 2, none others
 {
 	// Pixy
 	  while(getStart(i2c) == NOTFOUND); //Finds start of frame
@@ -80,5 +80,5 @@ void getBlocks(I2C_HandleTypeDef *i2c, uint8_t* buf) //X is 0, Y is 2, none othe
 	  uint16_t y_center = getWord(i2c);
 	  // Width/height words come here if needed
 	  buf[0] = x_center;
-	  buf[2] = y_center;
+	  buf[1] = y_center;
 }
