@@ -94,6 +94,16 @@ static GPIO_TypeDef *B2_GPIO = GPIOF;
 static uint16_t B2_PIN = GPIO_PIN_7;
 static GPIO_TypeDef *B3_GPIO = GPIOF;
 static uint16_t B3_PIN = GPIO_PIN_8;
+
+static int plotXStep = 0; //0,0 is starting corner
+static int plotYStep = 0;
+
+static int plotXGoalStep = 0;
+static int plotYGoalStep = 0;
+
+static const uint8_t STEP_PER_CM = 50;
+static const uint8_t TRAVEL_X_CM = 40;
+static const uint8_t TRAVEL_Y_CM = 40;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -111,6 +121,34 @@ static void MX_TIM5_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void movePlot(int dXStep, int dYStep){
+	plotXStep += dXStep;
+	plotYStep += dYStep;
+	if(dXStep == 0){
+		stepStop(dYStep, 1);
+	}else if(dYStep == 0){
+		stepStop(dXStep, 0);
+	}else{
+		stepDiag(dXStep, dYStep);
+	}
+	printf("movePlot: now at (%d, %d)\n\r", plotXStep, plotYStep);
+}
+
+//this goes from -128 to +127 on each axis
+void scaleN64Plot(signed char xval, signed char yval){
+	plotXGoalStep = (xval + 128) * (STEP_PER_CM * TRAVEL_X_CM) / 255;
+	plotYGoalStep = (yval + 128) * (STEP_PER_CM * TRAVEL_Y_CM) / 255;
+	printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+}
+void drawPlotBounds(){
+	//assumes we are at (0,0);
+	movePlot((int)(STEP_PER_CM * TRAVEL_X_CM), 0);
+	movePlot(0, (int)(STEP_PER_CM * TRAVEL_Y_CM));
+	movePlot((int)(-STEP_PER_CM * TRAVEL_X_CM), 0);
+	movePlot(0, (int)(-STEP_PER_CM * TRAVEL_Y_CM));
+}
+
+
 
 /* USER CODE END 0 */
 
@@ -148,18 +186,20 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
-  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  setSpeed(200); //yes 300, not above incl. 325
+
+  //LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
   N64_init(&htim4, &htim5, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
   printf("Initing...\n\r");
   HAL_Delay(200);
-  LCD_fill(HX8357_WHITE);
+  //LCD_fill(HX8357_WHITE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
+  drawPlotBounds();
+  movePlot((TRAVEL_X_CM * STEP_PER_CM / 2),(TRAVEL_Y_CM * STEP_PER_CM / 2));
   //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
-  setSpeed(200);
   uint32_t vals = 0;
   printf("Starting...\n\r");
   while (1)
@@ -169,18 +209,15 @@ int main(void)
 	  int buttonval = vals >> 31;
 	  signed char xval = (vals >> 8) & 0xff; //both were signed
 	  signed char yval = vals & 0xff;
-	  printf("X: %d,Y: %d\n\r", xval, yval);
+	  printf("N64 read X: %d,Y: %d\n\r", xval, yval);
 
 	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
 	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
 	  uint16_t rectRadius = 2;
 	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+	  scaleN64Plot(xval, yval);
 
 	 //HAL_Delay(50);
-//	  stepDiag(200, 200);
-//	  HAL_Delay(500);
-//	  stepDiag(-200, -200);
-//	  HAL_Delay(500);
 
 //
 //
