@@ -56,7 +56,8 @@ TIM_HandleTypeDef htim5;
 /* USER CODE BEGIN PV */
 //---------------------------Driver----------------------------------
 enum InputMode {IR, N64};
-InputMode mode = IR; // TODO: write N64 Button Interrupt to swap modes
+enum InputMode mode = N64; // TODO: write N64 Button Interrupt to swap modes
+int drawColor;
 //---------------------------Screen----------------------------------
 //Chip Select pin
 GPIO_TypeDef  *tftCS_GPIO = GPIOD;
@@ -69,8 +70,8 @@ GPIO_TypeDef  *tftRESET_GPIO = GPIOF;
 uint16_t tftRESET_PIN = GPIO_PIN_12;
 static int displayXStep = HX8357_TFTWIDTH/2; // 0,0 is starting corner
 static int displayYStep = HX8357_TFTHEIGHT/2;
-static int displayXGoalStep = 0;
-static int displayYGoalStep = 0;
+static int displayXGoalStep = 100;
+static int displayYGoalStep = 100;
 
 //----------------------------N64-------------------------------------
 GPIO_TypeDef  *n64_GPIO = GPIOC;
@@ -132,9 +133,9 @@ void movePlot(int dXStep, int dYStep){
 	plotXStep += dXStep;
 	plotYStep += dYStep;
 	if(dXStep == 0){
-		stepStop(dYStep, 1);
+		stepDiag(0, dYStep);
 	}else if(dYStep == 0){
-		stepStop(dXStep, 0);
+		stepDiag(dXStep, 0);
 	}else{
 		stepDiag(dXStep, dYStep);
 	}
@@ -154,32 +155,39 @@ void scaleN64Plot(signed char xval, signed char yval){
 	// plotYGoalStep = (yval + 128) * (STEP_PER_CM * TRAVEL_Y_CM) / 255;
 	// printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
     int threshold = 45;
-    if(xval > threshold && plot > (STEP_PER_CM * TRAVEL_X_CM) - 20)
-      plotXGoalStep =  plotXStep + 100;
-    if(xval < -1 * threshold && plotXStep < 20)
-      plotXGoalStep =  plotXStep - 100;
-    if(yval > threshold && plotYStep > (STEP_PER_CM * TRAVEL_Y_CM) - 20)
-      plotYGoalStep =  plotYStep + 100;
-    if(yval < -1 * threshold && plotYStep < 20)
-      plotYGoalStep =  plotYStep - 100;  
-    printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+    plotXGoalStep = 0;
+    plotYGoalStep = 0;
+    if(xval > threshold && plotXStep < (STEP_PER_CM * TRAVEL_X_CM) - 100)
+      plotXGoalStep =  100;
+    if(xval < -1 * threshold && plotXStep > 100)
+      plotXGoalStep =  -100;
+    if(yval > threshold && plotYStep < (STEP_PER_CM * TRAVEL_Y_CM) - 100)
+      plotYGoalStep =  100;
+    if(yval < -1 * threshold && plotYStep > 100)
+      plotYGoalStep =  -100;
+    printf("N64Plot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
+    plotXStep += plotXGoalStep;
+    plotYStep += plotYGoalStep;
 }
 void scaleN64Display(signed char xval, signed char yval)
 {
   // Which direction is the stick in?
     int threshold = 45;
-    if(xval > threshold && displayXStep > HX8357_TFTWIDTH - 20)
-      displayXGoalStep =  displayXStep + 4;
-    if(xval < -1 * threshold && displayXStep < 20)
+    displayXGoalStep = displayXStep;
+    displayYGoalStep = displayYStep;
+
+    if(xval > threshold && displayXStep > 20)
       displayXGoalStep =  displayXStep - 4;
-    if(yval > threshold && displayYStep > HX8357_TFTHEIGHT - 20)
+    if(xval < -1 * threshold && displayXStep < HX8357_TFTWIDTH - 20)
+      displayXGoalStep =  displayXStep + 4;
+    if(yval > threshold && displayYStep < HX8357_TFTHEIGHT - 20)
       displayYGoalStep =  displayYStep + 4;
-    if(yval < -1 * threshold && displayYStep < 20)
+    if(yval < -1 * threshold && displayYStep > 20)
       displayYGoalStep =  displayYStep - 4;  
     uint16_t XCenter = displayXGoalStep;
 	  uint16_t YCenter = displayYGoalStep;
 	  uint16_t rectRadius = 4;
-	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, drawColor);
     displayXStep = displayXGoalStep;
     displayYStep = displayYGoalStep;
 }
@@ -205,8 +213,46 @@ void drawPlotBounds(){
 	movePlot(0, (int)(-STEP_PER_CM * TRAVEL_Y_CM));
 }
 
-
-
+// Three button functions - Reset, Color Change, Input switch
+void resetAll(){
+	mode = N64;
+	drawColor = 0x0000;
+	moveTo(0,0);
+	LCD_fill(HX8357_WHITE);
+	displayXStep = HX8357_TFTWIDTH/2;
+	displayYStep = HX8357_TFTHEIGHT/2;
+}
+void colorChange()
+{
+	switch(drawColor){
+	case 0x0000:
+		drawColor = 0x001F;
+	case 0x001F:
+		drawColor = 0xF800;
+	case 0xF800:
+		drawColor = 0x07E0;
+	case 0x07E0:
+		drawColor = 0x07FF;
+	case 0x7FF:
+		drawColor = 0xF81F;
+	case 0xF81F:
+		drawColor = 0xFFE0;
+	case 0xFFE0:
+		drawColor = 0x0000;
+	}
+//#define	HX8357_BLACK   0x0000 ///< BLACK color for drawing graphics
+//#define	HX8357_BLUE    0x001F ///< BLUE color for drawing graphics
+//#define	HX8357_RED     0xF800 ///< RED color for drawing graphics
+//#define	HX8357_GREEN   0x07E0 ///< GREEN color for drawing graphics
+//#define HX8357_CYAN    0x07FF ///< CYAN color for drawing graphics
+//#define HX8357_MAGENTA 0xF81F ///< MAGENTA color for drawing graphics
+//#define HX8357_YELLOW  0xFFE0 ///< YELLOW color for drawing graphics
+//#define HX8357_WHITE   0xFFFF ///< WHITE color for drawing graphics
+}
+void modeSwap()
+{
+	mode = !mode;
+}
 /* USER CODE END 0 */
 
 /**
@@ -245,17 +291,19 @@ int main(void)
   step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
   setSpeed(200); //yes 300, not above incl. 325
 
-  //LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
   N64_init(&htim4, &htim5, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
   printf("Initing...\n\r");
   HAL_Delay(200);
-  //LCD_fill(HX8357_WHITE);
+  LCD_fill(HX8357_WHITE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // start here
-  drawPlotBounds();
+
+//  drawPlotBounds();
+//
   movePlot((TRAVEL_X_CM * STEP_PER_CM / 2),(TRAVEL_Y_CM * STEP_PER_CM / 2));
   //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
   uint32_t vals = 0;
@@ -280,16 +328,16 @@ int main(void)
     {
       // IR Read
       int ir_buf[2];
-      getBlocks(&ir_buf);
+      getBlocks(&hi2c1, &ir_buf[0]);
       printf("IR read X: %d,Y: %d\n\r", ir_buf[0], ir_buf[1]);
       // Input Tracking
       // To Display
-      scaleIRDisplay(&ir_buf);
+      scaleIRDisplay(&ir_buf[0]);
       // To Plotter Globals
-      scaleIRPlot(&ir_buf);
+      scaleIRPlot(&ir_buf[0]);
     }
     // Plot
-    stepDiag(plotXGoalStep, plotYGoalStep);
+    movePlot(plotXGoalStep, plotYGoalStep);
 
 	 //HAL_Delay(50);
 
