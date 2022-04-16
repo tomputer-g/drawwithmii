@@ -4,6 +4,7 @@
 
 // Definitions
 static TIM_HandleTypeDef *countTim;
+static TIM_HandleTypeDef *watchdogTim;
 // Data pin
 static GPIO_TypeDef *n64_GPIO;
 static uint16_t n64_PIN;
@@ -47,6 +48,7 @@ void writeZero()
 // ret >> 31:            buttonval (?)
 //(ret >> 8) & 0xff:    XVal (signed char)
 // ret & 0xff:           YVal (signed char)
+
 uint32_t pollRead()
 { // takes ~150us total.
 	// poll
@@ -69,13 +71,13 @@ uint32_t pollRead()
 	// read
 	for (int i = 0; i < 31; ++i)
 	{
-		delay_us(5); // 5
+		delay_us(4); // 5
 		HAL_GPIO_WritePin(n64_DEBUG_GPIO, n64_DEBUG_PIN, 1);
 		buttonVals |= (*readAdd >> 6) & 1; // 0.5u
 		HAL_GPIO_WritePin(n64_DEBUG_GPIO, n64_DEBUG_PIN, 0);
 		buttonVals = buttonVals << 1;
-		delay_us(6);
-		if (i % 10)
+		delay_us(4);
+		if (i % 4)
 		{
 			delay_us(1);
 		}
@@ -91,7 +93,6 @@ uint32_t pollRead()
 
 uint32_t intRead(){
 	volatile uint32_t *writeAdd = (uint32_t *)(GPIOC_ADDR + ODR_OFFSET);
-	uint32_t buttonVals = 0;
 	writeZero();
 	writeZero();
 	writeZero();
@@ -105,30 +106,14 @@ uint32_t intRead(){
 	*writeAdd |= (1 << 6);
 	delay_us(10);
 	shouldRead = 1;
-	// read TODO
-//	for (int i = 0; i < 31; ++i)
-//	{
-//		delay_us(5); // 5
-//		HAL_GPIO_WritePin(n64_DEBUG_GPIO, n64_DEBUG_PIN, 1);
-//		buttonVals |= (*readAdd >> 6) & 1; // 0.5u
-//		HAL_GPIO_WritePin(n64_DEBUG_GPIO, n64_DEBUG_PIN, 0);
-//		buttonVals = buttonVals << 1;
-//		delay_us(6);
-//		if (i % 10)
-//		{
-//			delay_us(1);
-//		}
-//		//	 if (i==15) {
-//		//		 delay_us(4);
-//		//	 }
-//	}
-//	delay_us(5);
-//	buttonVals |= (*readAdd >> 6) & 1;
-//	delay_us(15);
-	while(numRead < 31);
+	__HAL_TIM_SET_COUNTER(watchdogTim, 0); // 1MHz timer
+	while (numRead < 32 && __HAL_TIM_GET_COUNTER(watchdogTim) < 130); //watchDog timeout
+	if(numRead < 32){
+		currentRead = currentRead << (32 - numRead); //attempt to fix the transmission
+	}
 	numRead = 0;
 	shouldRead = 0;
-	return buttonVals;
+	return currentRead;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
@@ -145,9 +130,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 }
 
-void N64_init(TIM_HandleTypeDef *countTimer, GPIO_TypeDef *Data_GPIO, uint16_t Data_PIN, GPIO_TypeDef *Debug_GPIO, uint16_t Debug_PIN, GPIO_TypeDef *Int_GPIO, uint16_t Int_PIN)
+void N64_init(TIM_HandleTypeDef *countTimer, TIM_HandleTypeDef *watchdogTimer, GPIO_TypeDef *Data_GPIO, uint16_t Data_PIN, GPIO_TypeDef *Debug_GPIO, uint16_t Debug_PIN, GPIO_TypeDef *Int_GPIO, uint16_t Int_PIN)
 {
 	countTim = countTimer;
+	watchdogTim = watchdogTimer;
 	n64_GPIO = Data_GPIO; // due to nature of making C6 inout by registers, this pin assignment does not matter
 	n64_PIN = Data_PIN;
 	n64_DEBUG_GPIO = Debug_GPIO;
@@ -155,4 +141,5 @@ void N64_init(TIM_HandleTypeDef *countTimer, GPIO_TypeDef *Data_GPIO, uint16_t D
 	n64_INT_GPIO = Int_GPIO;
 	n64_INT_PIN = Int_PIN;
 	HAL_TIM_Base_Start(countTim);
+	HAL_TIM_Base_Start(watchdogTim);
 }

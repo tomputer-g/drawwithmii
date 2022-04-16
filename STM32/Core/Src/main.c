@@ -51,6 +51,7 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
 
 /* USER CODE BEGIN PV */
 //---------------------------Screen----------------------------------
@@ -103,6 +104,7 @@ static void MX_TIM4_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -143,37 +145,36 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_TIM2_Init();
   MX_I2C1_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-//  step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
-//  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
-  N64_init(&htim4, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
+  step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
+  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  N64_init(&htim4, &htim5, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
   printf("Initing...\n\r");
-//  HAL_Delay(200);
-//  LCD_fill(HX8357_MAGENTA);
-  //LCD_rect(50, 250, 190, 300, HX8357_BLACK); //TODO bug! trailing pixels missing by amount of dy
+  HAL_Delay(200);
+  LCD_fill(HX8357_WHITE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
   //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
-//  setSpeed(150);
+  setSpeed(200);
   uint32_t vals = 0;
   printf("Starting...\n\r");
   while (1)
   {
 
-//	  vals = pollRead();
-	  vals = intRead();
-	  //int buttonval = vals >> 31;
-//	  signed char xval = (vals >> 8) & 0xff; //both were signed
-//	  signed char yval = vals & 0xff;
-//	  printf("X: %d,Y: %d\n\r", xval, yval);
-//
-//	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
-//	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
-//	  uint16_t rectRadius = 2;
-//	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+	  vals = intRead(); // intRead();
+	  int buttonval = vals >> 31;
+	  signed char xval = (vals >> 8) & 0xff; //both were signed
+	  signed char yval = vals & 0xff;
+	  printf("X: %d,Y: %d\n\r", xval, yval);
+
+	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
+	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
+	  uint16_t rectRadius = 2;
+	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
 
 	 //HAL_Delay(50);
 //	  stepDiag(200, 200);
@@ -192,6 +193,8 @@ int main(void)
 //	HAL_Delay(5000);
 //	stepStop(-200, 1);
 //	HAL_Delay(500);
+
+
 	 //Pixycam
 //	  printf("Waiting...\n\r");
 //	 uint8_t buf[4];
@@ -482,6 +485,51 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 119;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 4294967295;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
 
 }
 

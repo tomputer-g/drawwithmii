@@ -1,7 +1,7 @@
-../Core/Src/n64.c:21:6:delay_us	16	static
-../Core/Src/n64.c:27:6:writeOne	16	static
-../Core/Src/n64.c:36:6:writeZero	16	static
-../Core/Src/n64.c:50:10:pollRead	24	static
-../Core/Src/n64.c:92:10:intRead	16	static
-../Core/Src/n64.c:134:6:HAL_GPIO_EXTI_Callback	24	static
-../Core/Src/n64.c:148:6:N64_init	24	static
+../Core/Src/n64.c:22:6:delay_us	16	static
+../Core/Src/n64.c:28:6:writeOne	16	static
+../Core/Src/n64.c:37:6:writeZero	16	static
+../Core/Src/n64.c:52:10:pollRead	24	static
+../Core/Src/n64.c:94:10:intRead	16	static
+../Core/Src/n64.c:119:6:HAL_GPIO_EXTI_Callback	24	static
+../Core/Src/n64.c:133:6:N64_init	24	static
