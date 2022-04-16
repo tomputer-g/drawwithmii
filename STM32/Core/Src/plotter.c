@@ -120,7 +120,7 @@ void stepDiag(int x_steps_to_move, int y_steps_to_move)
 		if (now - last_step_time >= step_delay)
 		{
 			last_step_time = now;
-			if (!lastMov || y_steps_left == 0)
+			if ((!lastMov || y_steps_left == 0) && x_steps_left > 0)
 			{
 				lastMov = 1;
 				if (xdirection == 1)
@@ -149,7 +149,7 @@ void stepDiag(int x_steps_to_move, int y_steps_to_move)
 					stepMotor(x_step_number % 8, 0);
 				}
 			}
-			if (lastMov || x_steps_left == 0)
+			if ((lastMov || x_steps_left == 0) && y_steps_left > 0)
 			{
 				lastMov = 0;
 				if (ydirection == 1)
