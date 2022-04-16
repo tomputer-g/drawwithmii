@@ -54,6 +54,9 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 
 /* USER CODE BEGIN PV */
+//---------------------------Driver----------------------------------
+enum InputMode {IR, N64};
+InputMode mode = IR; // TODO: write N64 Button Interrupt to swap modes
 //---------------------------Screen----------------------------------
 //Chip Select pin
 GPIO_TypeDef  *tftCS_GPIO = GPIOD;
@@ -64,6 +67,10 @@ uint16_t tftDC_PIN = GPIO_PIN_15;
 //Reset pin
 GPIO_TypeDef  *tftRESET_GPIO = GPIOF;
 uint16_t tftRESET_PIN = GPIO_PIN_12;
+static int displayXStep = HX8357_TFTWIDTH/2; // 0,0 is starting corner
+static int displayYStep = HX8357_TFTHEIGHT/2;
+static int displayXGoalStep = 0;
+static int displayYGoalStep = 0;
 
 //----------------------------N64-------------------------------------
 GPIO_TypeDef  *n64_GPIO = GPIOC;
@@ -95,7 +102,7 @@ static uint16_t B2_PIN = GPIO_PIN_7;
 static GPIO_TypeDef *B3_GPIO = GPIOF;
 static uint16_t B3_PIN = GPIO_PIN_8;
 
-static int plotXStep = 0; //0,0 is starting corner
+static int plotXStep = 0; // 0,0 is starting corner
 static int plotYStep = 0;
 
 static int plotXGoalStep = 0;
@@ -134,12 +141,62 @@ void movePlot(int dXStep, int dYStep){
 	printf("movePlot: now at (%d, %d)\n\r", plotXStep, plotYStep);
 }
 
-//this goes from -128 to +127 on each axis
-void scaleN64Plot(signed char xval, signed char yval){
-	plotXGoalStep = (xval + 128) * (STEP_PER_CM * TRAVEL_X_CM) / 255;
-	plotYGoalStep = (yval + 128) * (STEP_PER_CM * TRAVEL_Y_CM) / 255;
-	printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+void moveTo(int xPos, int yPos)
+{
+  int dXStep = xPos - plotXStep;
+  int dYStep = yPos - plotYStep;
+  movePlot(dXStep, dYStep);
 }
+
+//this goes from -128 to +127 on each axis (N64 input)
+void scaleN64Plot(signed char xval, signed char yval){
+	// plotXGoalStep = (xval + 128) * (STEP_PER_CM * TRAVEL_X_CM) / 255;
+	// plotYGoalStep = (yval + 128) * (STEP_PER_CM * TRAVEL_Y_CM) / 255;
+	// printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+    int threshold = 45;
+    if(xval > threshold && plot > (STEP_PER_CM * TRAVEL_X_CM) - 20)
+      plotXGoalStep =  plotXStep + 100;
+    if(xval < -1 * threshold && plotXStep < 20)
+      plotXGoalStep =  plotXStep - 100;
+    if(yval > threshold && plotYStep > (STEP_PER_CM * TRAVEL_Y_CM) - 20)
+      plotYGoalStep =  plotYStep + 100;
+    if(yval < -1 * threshold && plotYStep < 20)
+      plotYGoalStep =  plotYStep - 100;  
+    printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+}
+void scaleN64Display(signed char xval, signed char yval)
+{
+  // Which direction is the stick in?
+    int threshold = 45;
+    if(xval > threshold && displayXStep > HX8357_TFTWIDTH - 20)
+      displayXGoalStep =  displayXStep + 4;
+    if(xval < -1 * threshold && displayXStep < 20)
+      displayXGoalStep =  displayXStep - 4;
+    if(yval > threshold && displayYStep > HX8357_TFTHEIGHT - 20)
+      displayYGoalStep =  displayYStep + 4;
+    if(yval < -1 * threshold && displayYStep < 20)
+      displayYGoalStep =  displayYStep - 4;  
+    uint16_t XCenter = displayXGoalStep;
+	  uint16_t YCenter = displayYGoalStep;
+	  uint16_t rectRadius = 4;
+	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+    displayXStep = displayXGoalStep;
+    displayYStep = displayYGoalStep;
+}
+void scaleIRPlot(int *data)
+{
+  plotXGoalStep = data[0] * (STEP_PER_CM * TRAVEL_X_CM) / 320;
+	plotYGoalStep = data[1] * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
+  printf("IRPlot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+}
+void scaleIRDisplay(int *data)
+{
+  uint16_t XCenter = data[0] * HX8357_TFTWIDTH / 320;
+	uint16_t YCenter = data[1] * HX8357_TFTHEIGHT / 200;
+	uint16_t rectRadius = 8;
+	LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
+}
+
 void drawPlotBounds(){
 	//assumes we are at (0,0);
 	movePlot((int)(STEP_PER_CM * TRAVEL_X_CM), 0);
@@ -197,6 +254,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  // start here
   drawPlotBounds();
   movePlot((TRAVEL_X_CM * STEP_PER_CM / 2),(TRAVEL_Y_CM * STEP_PER_CM / 2));
   //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
@@ -204,18 +262,34 @@ int main(void)
   printf("Starting...\n\r");
   while (1)
   {
-
-	  vals = intRead(); // intRead();
-	  int buttonval = vals >> 31;
-	  signed char xval = (vals >> 8) & 0xff; //both were signed
-	  signed char yval = vals & 0xff;
-	  printf("N64 read X: %d,Y: %d\n\r", xval, yval);
-
-	  uint16_t XCenter = xval + (HX8357_TFTWIDTH/2);
-	  uint16_t YCenter = -yval + (HX8357_TFTHEIGHT/2);
-	  uint16_t rectRadius = 2;
-	  LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, HX8357_BLACK);
-	  scaleN64Plot(xval, yval);
+    if(mode == N64)
+    {
+      // N64 Read
+      vals = intRead(); // intRead();
+      int buttonval = vals >> 31;
+      signed char xval = (vals >> 8) & 0xff; //both were signed
+      signed char yval = vals & 0xff;
+      printf("N64 read X: %d,Y: %d\n\r", xval, yval);
+      // Input Tracking
+      // To Display
+      scaleN64Display(xval, yval);
+      // To Plotter Global
+      scaleN64Plot(xval, yval);
+    }
+    if(mode == IR)
+    {
+      // IR Read
+      int ir_buf[2];
+      getBlocks(&ir_buf);
+      printf("IR read X: %d,Y: %d\n\r", ir_buf[0], ir_buf[1]);
+      // Input Tracking
+      // To Display
+      scaleIRDisplay(&ir_buf);
+      // To Plotter Globals
+      scaleIRPlot(&ir_buf);
+    }
+    // Plot
+    stepDiag(plotXGoalStep, plotYGoalStep);
 
 	 //HAL_Delay(50);
 
