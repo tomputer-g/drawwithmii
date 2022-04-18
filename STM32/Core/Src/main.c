@@ -52,6 +52,7 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim16;
 
 /* USER CODE BEGIN PV */
 //---------------------------Driver----------------------------------
@@ -112,6 +113,16 @@ static int plotYGoalStep = 0;
 static const uint8_t STEP_PER_CM = 50;
 static const uint8_t TRAVEL_X_CM = 40;
 static const uint8_t TRAVEL_Y_CM = 40;
+
+//---------------------------Servo---------------------------------
+#define TIM16_ADDR 0x40014400 //timer 4 base register
+#define TIM_CCR1_OFFSET 0x34 //capture/compare register 2
+#define SERVO_DOWN 150
+#define SERVO_UP 125
+static char servoState = 0;
+static char ZPrevState = 0; //button push state for N64 Z
+static uint32_t * tim16_ccr1 = (uint32_t *)(TIM16_ADDR + TIM_CCR1_OFFSET);
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,6 +134,7 @@ static void MX_LPUART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -288,6 +300,8 @@ void reCalibrate(int vals)
 
 // Three button functions - Reset, Color Change, Input switch
 void resetAll(){
+	*tim16_ccr1 = SERVO_UP;
+	servoState = 0;
 	mode = N64;
 	drawColor = 0x0000;
 	LCD_fill(HX8357_WHITE);
@@ -339,10 +353,28 @@ void settingCheck(uint32_t vals)
 {
     int aVal = vals >> 31;
     if(aVal) modeSwap();
-    int bVal = (vals >> 30) & 0x1;
-    if(bVal) resetAll();
+//    int bVal = (vals >> 30) & 0x1;
+//    if(bVal) resetAll();
     int lBumper = (vals >> 21) & 0x1;
     if(lBumper) colorChange();
+}
+
+//Servo
+void toggleServo(){
+	if(servoState){
+		*tim16_ccr1 = SERVO_UP;
+		servoState = 0;
+	}else{
+		*tim16_ccr1 = SERVO_DOWN;
+		servoState = 1;
+	}
+}
+
+void handleServo(char ZState){
+	if(ZState && !ZPrevState){
+		toggleServo();
+	}
+	ZPrevState = ZState;
 }
 
 /* USER CODE END 0 */
@@ -379,13 +411,24 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   MX_TIM5_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
+
+  printf("Initing...\n\r");
+
+  //Servo
+  HAL_TIM_PWM_Start(&htim16, TIM_CHANNEL_1);
+  *tim16_ccr1 = SERVO_UP;
+
+  //Stepper
   step_init(&htim2, 1, A0_GPIO, A0_PIN, A1_GPIO, A1_PIN, A2_GPIO, A2_PIN, A3_GPIO, A3_PIN, B0_GPIO, B0_PIN, B1_GPIO, B1_PIN, B2_GPIO, B2_PIN, B3_GPIO, B3_PIN);
   setSpeed(300); //yes 300, not above incl. 325
 
-  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
+  //N64
   N64_init(&htim4, &htim5, n64_GPIO, n64_PIN, n64_DEBUG_GPIO, n64_DEBUG_PIN, n64_INT_GPIO, n64_INT_PIN);
-  printf("Initing...\n\r");
+
+  //LCD
+  LCD_init(&hspi1, tftCS_GPIO, tftCS_PIN, tftDC_GPIO, tftDC_PIN, tftRESET_GPIO, tftRESET_PIN);
   HAL_Delay(200);
   LCD_fill(HX8357_WHITE);
   /* USER CODE END 2 */
@@ -394,9 +437,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   // start here
 
-  //drawPlotBounds();
+//  drawPlotBounds();
   movePlot((TRAVEL_X_CM * STEP_PER_CM / 2),(TRAVEL_Y_CM * STEP_PER_CM / 2));
-  //code assumes the jumper is connected for the enables and thus will not handle writing 1 to them
   uint32_t vals = 0;
   printf("Starting...\n\r");
   while (1)
@@ -405,7 +447,7 @@ int main(void)
     {
       // N64 Read
       vals = intRead(); // intRead();
-      reCalibrate(vals);
+      //reCalibrate(vals);
       settingCheck(vals);
       signed char xval = (vals >> 8) & 0xff; //both were signed
       signed char yval = vals & 0xff;
@@ -433,30 +475,7 @@ int main(void)
     }
     // Plot
 
-
-	 //HAL_Delay(50);
-
-//
-//
-//	stepStop(1600, 0);
-//	HAL_Delay(5000);
-//	stepStop(-200, 0);
-//	HAL_Delay(500);
-//
-//	stepStop(1800, 1);
-//	HAL_Delay(5000);
-//	stepStop(-200, 1);
-//	HAL_Delay(500);
-
-
-	 //Pixycam
-//	  printf("Waiting...\n\r");
-//	 uint8_t buf[4];
-//	 getBlocks(&hi2c1, &buf[0]);
-//	 printf("%d, %d, %d, %d\n\r", buf[0], buf[1], buf[2], buf[3]);
-
-	  HAL_Delay(50);
-
+	  handleServo((vals >> 29) & 1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -716,7 +735,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 19;
+  htim4.Init.Prescaler = 11;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 0xffff-1;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -788,6 +807,68 @@ static void MX_TIM5_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 1199;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 1999;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim16, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim16, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+  HAL_TIM_MspPostInit(&htim16);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -833,6 +914,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF13_SAI1;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PF0 PF1 PF2 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
@@ -855,6 +942,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PG1 */
   GPIO_InitStruct.Pin = GPIO_PIN_1;
@@ -893,12 +986,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF13_SAI2;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD8 PD9 */
@@ -986,6 +1073,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
