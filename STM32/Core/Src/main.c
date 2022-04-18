@@ -224,21 +224,17 @@ void scaleN64Display(signed char xval, signed char yval, int threshold)
 void scaleIRPlot(int *data, int threshold)
 {
 	//Tracking style
-	if(data[0] != 0 && data[1] != 0)
-	{
-		int newX = data[0] * (STEP_PER_CM * TRAVEL_X_CM) / 320;
-		newX = (STEP_PER_CM * TRAVEL_X_CM) - newX;
-		int newY = data[1] * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
-		newY = (STEP_PER_CM * TRAVEL_Y_CM) - newY;
-		int newXDiff = newX - plotXStep;
-		int newYDiff = newY - plotYStep;
-		int total = newXDiff + newYDiff;
-		int stepDistance = 100;
-		plotXGoalStep = newXDiff * stepDistance / total;
-		plotYGoalStep = newYDiff * stepDistance / total;
-		printf("IRPlot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
-		movePlot(plotXGoalStep, plotYGoalStep);
-	}
+
+//	int newX = (320 - data[0]) * (STEP_PER_CM * TRAVEL_X_CM) / 320;
+//	int newY = (200 - data[1]) * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
+//	int newXDiff = newX - plotXStep;
+//	int newYDiff = newY - plotYStep;
+//	int total = newXDiff + newYDiff;
+//	int stepDistance = 100;
+//	plotXGoalStep = newXDiff * stepDistance / total;
+//	plotYGoalStep = newYDiff * stepDistance / total;
+	printf("IRPlot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
+	movePlot(plotXGoalStep, plotYGoalStep);
 
     // N64 Style
 //
@@ -254,27 +250,22 @@ void scaleIRDisplay(int *data, int threshold)
 //	LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, drawColor);
 
 	//Tracking style
-	if(data[0] != 0 && data[1] != 0)
-	{
-		int newX = data[0] * (STEP_PER_CM * TRAVEL_X_CM) / 320;
-		newX = (STEP_PER_CM * TRAVEL_X_CM) - newX;
-		int newY = data[1] * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
-		newY = (STEP_PER_CM * TRAVEL_Y_CM) - newY;
-		int newXDiff = newX - plotXStep;
-		int newYDiff = newY - plotYStep;
-		int total = newXDiff + newYDiff;
-		int stepDistance = 100;
-		plotXGoalStep = newXDiff * stepDistance / total;
-		plotYGoalStep = newYDiff * stepDistance / total;
 
-		uint16_t XCenter = (plotXStep + plotXGoalStep) * (HX8357_TFTHEIGHT) / (STEP_PER_CM * TRAVEL_X_CM);
-		uint16_t YCenter = (plotYStep + plotYGoalStep) * (HX8357_TFTWIDTH) / (STEP_PER_CM * TRAVEL_Y_CM);
+	int newX = (320 - data[0]) * (STEP_PER_CM * TRAVEL_X_CM) / 320;
+	int newY = (200 - data[1]) * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
+	int newXDiff = newX - plotXStep;
+	int newYDiff = newY - plotYStep;
+	int total = abs(newXDiff) + abs(newYDiff);
+	int stepDistance = 100;
+	plotXGoalStep = newXDiff * stepDistance / total;
+	plotYGoalStep = newYDiff * stepDistance / total;
+
+    uint16_t XCenter = (plotYStep + plotYGoalStep) * (HX8357_TFTWIDTH) / (STEP_PER_CM * TRAVEL_Y_CM);
+	uint16_t YCenter = (plotXStep + plotXGoalStep) * (HX8357_TFTHEIGHT) / (STEP_PER_CM * TRAVEL_X_CM);
 	  uint16_t rectRadius = 12;
 	  if(XCenter + rectRadius >= HX8357_TFTWIDTH) XCenter -= rectRadius;
 	  if(YCenter + rectRadius >= HX8357_TFTHEIGHT) YCenter -= rectRadius;
 	  LCD_rect(XCenter, YCenter, XCenter + rectRadius, YCenter + rectRadius, drawColor);
-	}
-
     // N64 Style
 //	int xval = -1* (data[0] * 256 / 320) - 128;
 //	int yval = -1*((data[0] * 256 / 200) - 128);
