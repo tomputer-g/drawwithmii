@@ -256,9 +256,12 @@ void scaleIRDisplay(int *data, int threshold)
 	int newXDiff = newX - plotXStep;
 	int newYDiff = newY - plotYStep;
 	int total = abs(newXDiff) + abs(newYDiff);
-	int stepDistance = 100;
-	plotXGoalStep = newXDiff * stepDistance / total;
-	plotYGoalStep = newYDiff * stepDistance / total;
+	if(total > 200)
+	{
+		int stepDistance = 150;
+		plotXGoalStep = newXDiff * stepDistance / total;
+		plotYGoalStep = newYDiff * stepDistance / total;
+	}
 
     uint16_t XCenter = (plotYStep + plotYGoalStep) * (HX8357_TFTWIDTH) / (STEP_PER_CM * TRAVEL_Y_CM);
 	uint16_t YCenter = (plotXStep + plotXGoalStep) * (HX8357_TFTHEIGHT) / (STEP_PER_CM * TRAVEL_X_CM);
