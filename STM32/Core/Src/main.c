@@ -151,7 +151,7 @@ void movePlot(int dXStep, int dYStep){
 	}else{
 		stepDiag(dXStep, dYStep);
 	}
-	printf("movePlot: now at (%d, %d)\n\r", plotXStep, plotYStep);
+	//printf("movePlot: now at (%d, %d)\n\r", plotXStep, plotYStep);
 }
 
 void moveTo(int xPos, int yPos)
@@ -165,7 +165,7 @@ void moveTo(int xPos, int yPos)
 void scaleN64Plot(signed char xval, signed char yval, int threshold){
 	// plotXGoalStep = (xval + 128) * (STEP_PER_CM * TRAVEL_X_CM) / 255;
 	// plotYGoalStep = (yval + 128) * (STEP_PER_CM * TRAVEL_Y_CM) / 255;
-	// printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
+	// //printf("N64Plot: going to (%d, %d)\n\r", plotXGoalStep, plotYGoalStep);
 	int stepDistance = 50;
     plotXGoalStep = 0;
     plotYGoalStep = 0;
@@ -177,7 +177,7 @@ void scaleN64Plot(signed char xval, signed char yval, int threshold){
       plotYGoalStep =  stepDistance;
     if(yval < -1 * threshold && plotYStep > stepDistance)
       plotYGoalStep =  -1 * stepDistance;
-    printf("N64Plot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
+    //printf("N64Plot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
     movePlot(plotXGoalStep, plotYGoalStep);
 }
 void scaleN64Display(signed char xval, signed char yval, int threshold)
@@ -233,7 +233,7 @@ void scaleIRPlot(int *data, int threshold)
 //	int stepDistance = 100;
 //	plotXGoalStep = newXDiff * stepDistance / total;
 //	plotYGoalStep = newYDiff * stepDistance / total;
-	printf("IRPlot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
+	//printf("IRPlot: going to (%d, %d)\n\r", plotXStep+ plotXGoalStep, plotYStep + plotYGoalStep);
 	movePlot(plotXGoalStep, plotYGoalStep);
 
     // N64 Style
@@ -250,13 +250,21 @@ void scaleIRDisplay(int *data, int threshold)
 //	LCD_rect(XCenter - rectRadius, YCenter - rectRadius, XCenter + rectRadius, YCenter + rectRadius, drawColor);
 
 	//Tracking style
-
+	plotXGoalStep = 0;
+	plotYGoalStep = 0;
 	int newX = (320 - data[0]) * (STEP_PER_CM * TRAVEL_X_CM) / 320;
+	if(newX < 0) newX = 0;
 	int newY = (200 - data[1]) * (STEP_PER_CM * TRAVEL_Y_CM) / 200;
+	if(newY < 0) newY = 0;
 	int newXDiff = newX - plotXStep;
 	int newYDiff = newY - plotYStep;
+
+	// Whiteboard bounds
+//	if(newY < 1050 || newY >  (STEP_PER_CM * TRAVEL_Y_CM) - 650) newYDiff = 0;
+//	if(newX < 300 || newX >  (STEP_PER_CM * TRAVEL_X_CM) - 1350) newXDiff = 0;
+
 	int total = abs(newXDiff) + abs(newYDiff);
-	if(total > 200)
+	if(total > 400)
 	{
 		int stepDistance = 150;
 		plotXGoalStep = newXDiff * stepDistance / total;
@@ -342,6 +350,7 @@ void colorChange()
 void modeSwap()
 {
 	mode = !mode;
+	HAL_Delay(500);
 }
 void settingCheck(uint32_t vals)
 {
@@ -408,7 +417,7 @@ int main(void)
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
 
-  printf("Initing...\n\r");
+  ////printf("Initing...\n\r");
 
   //Servo
   HAL_TIM_PWM_Start(&htim16, TIM_CHANNEL_1);
@@ -434,7 +443,7 @@ int main(void)
 //  drawPlotBounds();
   movePlot((TRAVEL_X_CM * STEP_PER_CM / 2),(TRAVEL_Y_CM * STEP_PER_CM / 2));
   uint32_t vals = 0;
-  printf("Starting...\n\r");
+  //printf("Starting...\n\r");
   while (1)
   {
     if(mode == N64)
@@ -445,7 +454,7 @@ int main(void)
       settingCheck(vals);
       signed char xval = (vals >> 8) & 0xff; //both were signed
       signed char yval = vals & 0xff;
-      printf("N64 read X: %d,Y: %d\n\r", xval, yval);
+      //printf("N64 read X: %d,Y: %d\n\r", xval, yval);
       // Input Tracking
       // To Display
       scaleN64Display(xval, yval, 45);
@@ -460,7 +469,7 @@ int main(void)
       // IR Read
       int ir_buf[2];
       getBlocks(&hi2c1, &ir_buf[0]);
-      printf("IR read X: %d,Y: %d\n\r", ir_buf[0], ir_buf[1]);
+      //printf("IR read X: %d,Y: %d\n\r", ir_buf[0], ir_buf[1]);
       // Input Tracking
       // To Display
       scaleIRDisplay(&ir_buf[0], 10);
@@ -473,6 +482,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  HAL_Delay(50);
   }
   /* USER CODE END 3 */
 }
@@ -1116,7 +1126,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     ex: //printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
