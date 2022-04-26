@@ -1,2 +1,2 @@
 # drawwithmii
-An EECS 373 project for Winter '22.
+ Source files located at /STM32/core/src and /STM32/core/inc
